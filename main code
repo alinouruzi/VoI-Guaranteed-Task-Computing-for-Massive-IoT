@@ -1,0 +1,126 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Sep 28 20:01:16 2023
+
+@author: ali nouruzi
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.special import erfinv, erf
+np.random.seed(1373)
+#---------------------------
+ERFINV_2mu=erfinv(2*eta_Ava-1)
+num_=mu_Ser+sigma_Ser*ERFINV_2mu*np.sqrt(2)
+den_=mu_In-sigma_In*ERFINV_2mu*np.sqrt(2)
+CAP_effective=num_/den_
+CAP_INT=int(CAP_effective)
+#%%%--------------------------------------------------------------------------
+def __FIFO__():
+    mem_alpha=[]
+    for e in range(E):
+        print("E::",e)
+        I=np.random.poisson(lam_In,T)
+        I_zero_ind=np.where(I==0)
+        I[I_zero_ind]=1
+        J=np.random.poisson(lam_Ser,T)
+        J_zero_ind=np.where(J==0)
+        J[J_zero_ind]=1
+        time_elapsed_=np.zeros([T+1,C_Upper*lam_In])
+        for t in range(T):
+            non_zero_len=0
+            if t> lim_value_time_INT:
+                time_elapsed_last=time_elapsed_[t-lim_value_time_INT:t,:]
+                non_zero=np.where(time_elapsed_last>0)
+                non_zero_len=len(non_zero)
+                
+            I_t=I[t]
+            I_t=I_t+non_zero_len
+            J_t=J[t]
+            #--------------------------
+            alpha_t=np.zeros([J_t])
+            delta_t=np.zeros([I_t,J_t])
+            #--------------------------     
+            W=np.random.normal(mu_In,sigma_In,I_t)
+            V=np.random.normal(mu_Ser,sigma_Ser,J_t)
+            time_elapsed_t_=time_elapsed_[t,:]
+            cnt_surp_i=0
+            for i in range(I_t):
+                for j in range(J_t):
+                    if np.sum(delta_t[i,:])==0:
+                        if np.sum(delta_t[:,j])+1<=CAP_INT:
+                            delta_t[i,j]=1
+                            alpha_t[j]=1
+                            time_elapsed_[t,i]=0
+                if t>0:
+                    if np.sum(delta_t[i,:])==0:
+                        time_elapsed_[t+1,cnt_surp_i]=time_elapsed_[t,cnt_surp_i]+1
+                        cnt_surp_i+=1
+                    else:
+                        time_elapsed_[t+1,:]=0
+                    
+            mem_alpha.append(np.sum(alpha_t))
+        sum_mem_alpha=np.sum(np.array(mem_alpha))
+        
+    return mem_alpha, sum_mem_alpha/(E*T),  time_elapsed_ 
+
+#%%%--------------------------------------------------------------------------
+def __LIFO__():
+    mem_alpha=[]
+    mem_elapsed=[]
+    for e in range(E):
+        print("E::",e)
+        I=np.random.poisson(lam_In,T)
+        I_zero_ind=np.where(I==0)
+        I[I_zero_ind]=1
+        J=np.random.poisson(lam_Ser,T)
+        J_zero_ind=np.where(J==0)
+        J[J_zero_ind]=1
+        time_elapsed_=np.zeros([T+1,C_Upper*lam_In])
+        for t in range(T):
+            non_zero_len=0
+            if t> lim_value_time_INT:
+                time_elapsed_last=time_elapsed_[t-lim_value_time_INT:t,:]
+                non_zero=np.where(time_elapsed_last>0)
+                non_zero_len=len(non_zero)
+                
+            I_t=I[t]
+            I_t=I_t+non_zero_len
+            J_t=J[t]
+            #--------------------------
+            alpha_t=np.zeros([J_t])
+            delta_t=np.zeros([I_t,J_t])
+            #--------------------------     
+            W=np.random.normal(mu_In,sigma_In,I_t)
+            V=np.random.normal(mu_Ser,sigma_Ser,J_t)
+            time_elapsed_t_=time_elapsed_[t,:]
+            for i in range(I_t):
+                for j in range(J_t):
+                    if np.sum(delta_t[i,:])==0:
+                        if np.sum(delta_t[:,j])+1<=CAP_INT:
+                            delta_t[i,j]=1
+                            alpha_t[j]=1
+                        
+                if t>0:
+                    if np.sum(delta_t[i,:])==0:
+                        time_elapsed_[t+1,i]=time_elapsed_[t,i]+1
+                    else:
+                        time_elapsed_[t+1,:]=0
+                    
+                    
+            mem_alpha.append(np.sum(alpha_t))
+            mem_elapsed.append(np.sum(time_elapsed_[t,:]))
+            
+        sum_mem_alpha=np.sum(np.array(mem_alpha))
+        sum_mem_elapsed=np.sum(np.array(mem_elapsed))     
+        
+    return mem_alpha, sum_mem_alpha/(E*T),  time_elapsed_ 
+#%%----------------------------------------------------------------------------
+mem_alpha_F, sum_mem_alpha_F, time_elapsed_F=__FIFO__()                
+mem_alpha_L, sum_mem_alpha_L, time_elapsed_L=__LIFO__()                
+
+print("sum_mem_alpha_F:",sum_mem_alpha_F)
+print("sum_mem_alpha_L:",sum_mem_alpha_L)
+print("------------------------------------------")
+print("time_elapsed_F::",np.max(time_elapsed_F))
+print("time_elapsed_L::",np.max(time_elapsed_L))
+
